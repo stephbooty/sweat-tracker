@@ -1,0 +1,152 @@
+
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Sweat Tracker — Date Feed (v2.1) + Gamelogs</title>
+<style>
+  :root{
+    --bg:#0b1020; --card:#11162a; --ink:#f8fafc; --muted:#94a3b8; --line:#1f2a44;
+    --accent:#7c3aed; --accent2:#06b6d4; --good:#10b981; --warn:#f59e0b; --bad:#ef4444;
+  }
+  html,body{margin:0;padding:0;background:#0b1020;color:var(--ink);font-family:Inter,system-ui,Arial}
+  .wrap{max-width:1100px;margin:24px auto;padding:0 16px}
+  header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+  h1{font-size:28px;margin:0;letter-spacing:.3px}
+  .tabs{display:flex;gap:8px;background:rgba(255,255,255,.04);padding:6px;border-radius:12px;border:1px solid var(--line)}
+  .tab{padding:10px 14px;border-radius:10px;cursor:pointer;color:var(--muted);border:1px solid transparent}
+  .tab.active{background:linear-gradient(180deg,rgba(124,58,237,.2),rgba(6,182,212,.15));color:var(--ink);border-color:#2b375c}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin:12px 0;box-shadow:0 8px 30px rgba(0,0,0,.25)}
+  .gameHdr{border-left:4px solid #4158D0;background:linear-gradient(90deg, rgba(65,88,208,.25), rgba(200,80,192,.12));padding:10px;border-radius:8px;margin:18px 0 10px}
+  .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+  .card{background:#0f152a;border:1px solid #202b4a;border-radius:14px;padding:12px}
+  .badge{width:28px;height:28px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.25)}
+  .label{font-size:13px;color:#cbd5e1}
+  .score{font-size:22px;font-weight:800;letter-spacing:.5px}
+  .dot{width:8px;height:8px;border-radius:50%;background:#22c55e;box-shadow:0 0 12px #22c55e}
+  .slip{background:#11162a;border:1px solid #1f2a44;border-radius:14px;padding:14px;margin:12px 0}
+  .leg{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;margin:10px 0}
+  .pill{background:#243052;border:1px solid #2b375c;border-radius:999px;padding:2px 10px;font-size:12px;color:#c3d3ff}
+  .bar{height:12px;background:#1a2340;border:1px solid #2b375c;border-radius:8px;overflow:hidden;flex:1}
+  .fill{height:100%;background:linear-gradient(90deg,#10b981,#38bdf8);width:0%}
+  .pct{width:50px;text-align:right;font-variant-numeric:tabular-nums;color:#c7d2fe}
+  .val{min-width:56px;text-align:right;font-variant-numeric:tabular-nums;color:#e2e8f0}
+  .split{height:1px;background:var(--line);margin:8px 0}
+  .slipbar{height:14px;background:#1a2340;border:1px solid #2b375c;border-radius:9px;overflow:hidden}
+  .slipfill{height:100%;background:linear-gradient(90deg,#10b981,#38bdf8);width:0%}
+  .tag{font-size:12px;background:#243052;border:1px solid #2b375c;padding:2px 8px;border-radius:999px;color:#e5e7eb}
+  .hide{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>🏈 Sweat Tracker</h1>
+    <div class="tabs">
+      <div class="tab active" data-tab="bets">Bet Slips</div>
+      <div class="tab" data-tab="scores">Live Scores</div>
+    </div>
+  </header>
+
+  <div class="panel">
+    <strong>Mode:</strong> v2.1 <code>date/20250928/games.json</code> ➜ gamelogs (teams & players). No boxscore used.
+  </div>
+
+  <!-- Scores -->
+  <section id="tab-scores" class="">
+    <div class="panel">
+      <div class="row" style="justify-content:space-between; width:100%">
+        <div>
+          <strong>Sunday Scoreboard — Sept 28</strong>
+          <div class="label">Auto-refresh every 20s.</div>
+        </div>
+        <div class="row"><div class="dot"></div><span class="label">Live</span></div>
+      </div>
+    </div>
+    <div class="grid" id="scoreGrid"></div>
+  </section>
+
+  <!-- (Bet slips left out here to focus on fixing team names/scores first) -->
+</div>
+
+<script>
+const TEAM = { ARI:'#97233F', ATL:'#A71930', BAL:'#241773', BUF:'#00338D', CAR:'#0085CA', CHI:'#0B162A',
+  CIN:'#FB4F14', CLE:'#311D00', DAL:'#041E42', DEN:'#FB4F14', DET:'#0076B6', GB:'#203731', HOU:'#03202F',
+  IND:'#002C5F', JAX:'#006778', KC:'#E31837', LAC:'#0080C6', LAR:'#003594', LV:'#000000', MIA:'#008E97',
+  MIN:'#4F2683', NE:'#002244', NO:'#D3BC8D', NYG:'#0B2265', NYJ:'#125740', PHI:'#004C54', PIT:'#FFB612',
+  SF:'#AA0000', SEA:'#002244', TB:'#D50A0A', TEN:'#0C2340', WAS:'#5A1414' };
+const badge = a=>`<div class="badge" style="background:${TEAM[a]||'#64748b'}">${a||'---'}</div>`;
+
+const qs=s=>document.querySelector(s);
+async function msf(path,q=''){
+  const url = `/api/msf?path=${encodeURIComponent(path)}${q?`&q=${encodeURIComponent(q)}`:''}`;
+  const r = await fetch(url); if(!r.ok) throw new Error('HTTP '+r.status); return r.json();
+}
+function safeAbbr(obj){
+  return obj?.abbreviation || obj?.abbr || obj?.code || obj?.teamAbbreviation || obj?.team?.abbreviation || '---';
+}
+function teamName(obj){
+  const city = obj?.city || obj?.teamCity || '';
+  const name = obj?.name || obj?.teamName || safeAbbr(obj);
+  return (city?city+' ':'') + name;
+}
+function gameCard(g){
+  return `<div class="card" data-key="${g.key}">
+    <div class="row">
+      <div class="row" style="gap:8px"><div>${badge(g.awayAb)}</div><div><div class="label">${g.awayName}</div><div class="score" data-away>0</div></div></div>
+      <div class="row" style="gap:8px"><div>${badge(g.homeAb)}</div><div><div class="label">${g.homeName}</div><div class="score" data-home>0</div></div></div>
+    </div>
+    <div class="label" data-status>Scheduled</div>
+  </div>`;
+}
+async function loadDateGames(){
+  // Use the v2.1 date games endpoint
+  const dateFeed = await msf('v2.1/pull/nfl/2025-regular/date/20250928/games.json');
+  const arr = dateFeed?.games || dateFeed?.game || [];
+  const out = arr.map(it=>{
+    const sch = it.schedule || it.game || {};
+    const id  = sch.id || it.id;
+    const date = (sch.startTime || it.startTime || '').slice(0,10).replaceAll('-','');
+    const away = it.awayTeam || it.away || sch.awayTeam || {};
+    const home = it.homeTeam || it.home || sch.homeTeam || {};
+    const awayAb = safeAbbr(away);
+    const homeAb = safeAbbr(home);
+    return {
+      id, date,
+      key: `${date}-${awayAb}-${homeAb}`,
+      awayAb, homeAb,
+      awayName: teamName(away),
+      homeName: teamName(home)
+    };
+  });
+  return out;
+}
+async function refreshScores(games){
+  await Promise.all(games.map(async g=>{
+    try{
+      const feed = await msf(`v2.1/pull/nfl/2025-regular/date/${g.date}/team_gamelogs.json`, 'game='+g.key);
+      const logs = feed?.teamGamelogs || feed?.gamelogs || [];
+      const card = qs(`.card[data-key="${g.key}"]`); if(!card) return;
+      logs.forEach(l=>{
+        const ab = l?.team?.abbreviation;
+        const pts = Number(l?.stats?.miscellaneous?.points || l?.stats?.scoring?.points || 0);
+        if(ab===g.awayAb) card.querySelector('[data-away]').textContent=pts;
+        if(ab===g.homeAb) card.querySelector('[data-home]').textContent=pts;
+      });
+      card.querySelector('[data-status]').textContent = logs.length ? 'Live/Final' : 'Scheduled';
+    }catch(e){ /* ignore */ }
+  }));
+}
+(async function init(){
+  const games = await loadDateGames();
+  // Render
+  qs('#scoreGrid').innerHTML = games.map(gameCard).join('');
+  // Tick
+  const tick = ()=>refreshScores(games);
+  tick(); setInterval(tick, 20000);
+})();
+</script>
+</body>
+</html>
