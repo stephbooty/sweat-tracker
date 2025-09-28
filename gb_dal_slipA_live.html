@@ -1,0 +1,200 @@
+
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>GB @ DAL — Bet Slip A (Live)</title>
+<style>
+  :root{
+    --bg:#0b1020; --card:#11162a; --ink:#f8fafc; --muted:#94a3b8; --line:#1f2a44;
+    --good:#10b981; --warn:#f59e0b; --bad:#ef4444;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);font-family:Inter,system-ui,Arial}
+  .wrap{max-width:980px;margin:28px auto;padding:0 16px}
+  h1{margin:0 0 8px 0;font-size:28px}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin:12px 0;box-shadow:0 8px 30px rgba(0,0,0,.25)}
+  .muted{color:var(--muted);font-size:13px}
+  .slip{background:#101630;border:1px solid #223055;border-radius:14px;padding:14px;margin:14px 0}
+  .slip h2{margin:0 0 8px 0;font-size:18px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .leg{background:#0f152a;border:1px solid #202b4a;border-radius:12px;padding:12px}
+  .leg h3{margin:0 0 6px 0;font-size:14px}
+  .tag{font-size:11px;background:#243052;border:1px solid #2b375c;padding:2px 6px;border-radius:999px;color:#e5e7eb}
+  .bar{height:12px;background:#1a2340;border:1px solid #2b375c;border-radius:8px;overflow:hidden}
+  .fill{height:100%;background:linear-gradient(90deg,#10b981,#38bdf8);width:0%}
+  .nums{display:flex;justify-content:space-between;color:#cbd5e1;font-size:12px;margin-top:4px}
+  .ok{color:var(--good)} .warn{color:var(--warn)} .bad{color:var(--bad)}
+  .foot{display:flex;justify-content:space-between;align-items:center;margin-top:8px;color:#cdd6f4}
+  .slipbar{height:14px;background:#1a2340;border:1px solid #2b375c;border-radius:9px;overflow:hidden}
+  .slipfill{height:100%;background:linear-gradient(90deg,#10b981,#38bdf8);width:0%}
+  code{background:#0f152a;border:1px solid #202b4a;padding:2px 6px;border-radius:6px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="panel">
+    <h1>Green Bay Packers @ Dallas Cowboys</h1>
+    <div class="muted">Bet Slip A — live legs with auto-refresh every 20s. Data: v2.1 <code>date/20250928/player_gamelogs.json</code> and <code>date/20250928/games.json</code>.</div>
+  </div>
+
+  <div class="slip" id="slipA">
+    <h2>Bet Slip A</h2>
+    <div class="grid" id="A-legs"></div>
+    <div class="foot">
+      <div class="muted">Legs hit</div>
+      <div class="slipbar"><div class="slipfill" id="A-fill"></div></div>
+      <div class="tag"><span id="A-hit">0</span>/10</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const DATE = '20250928';       // Sunday slate
+const GAME_KEY = '20250928-GB-DAL'; // For game total
+
+// Legs list taken from your screenshot
+const LEGS = [
+  tdAny('Josh Jacobs'),
+  passYds('Dak Prescott', 175),
+  passYds('Jordan Love', 200),
+  recYds('Javonte Williams', 10),
+  recs('George Pickens', 4),
+  recs('Jake Ferguson', 5),
+  passTD('Dak Prescott', 1),
+  passTD('Jordan Love', 1),
+  passTD('Jordan Love', 2),         // Over 1.5 passing TDs
+  gameUnder(52.5),                  // Game total Under 52.5
+];
+
+// Helper constructors
+function slug(name){return name.toLowerCase().replace(/\s+/g,'-')}
+function passYds(name,target){return {type:'passYds', name, key:slug(name), target}}
+function passTD(name,target){return {type:'passTD', name, key:slug(name), target}}
+function recYds(name,target){return {type:'recYds', name, key:slug(name), target}}
+function recs(name,target){return {type:'recs', name, key:slug(name), target}}
+function tdAny(name){return {type:'tdAny', name, key:slug(name), target:1}}
+function gameUnder(line){return {type:'under', line}}
+
+const TITLE = (leg)=>{
+  if(leg.type==='under') return `Game Total — Under ${leg.line}`;
+  const map={passYds:'Passing Yards', passTD:'Passing TDs', recYds:'Receiving Yards', recs:'Receptions', tdAny:'Anytime TD'};
+  return `${leg.name} — ${map[leg.type]}${leg.type!=='tdAny' ? ' ('+leg.target+'+)' : ''}`;
+};
+
+function renderLegs(){
+  const host = document.getElementById('A-legs');
+  host.innerHTML = LEGS.map((leg,i)=>`
+    <div class="leg" id="A-${i}">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px">
+        <h3>${TITLE(leg)}</h3>
+        <span class="tag" id="A-${i}-status">0%</span>
+      </div>
+      <div class="bar"><div class="fill" id="A-${i}-bar"></div></div>
+      <div class="nums"><span id="A-${i}-now">0</span><span id="A-${i}-of">${leg.type==='under' ? 'of ' + leg.line : 'of '+(leg.type==='tdAny'?1:leg.target)}</span></div>
+    </div>
+  `).join('');
+}
+renderLegs();
+
+// --- Fetchers via your Vercel proxy ---
+async function msf(path,q=''){
+  const url = `/api/msf?path=${encodeURIComponent(path)}${q?`&q=${encodeURIComponent(q)}`:''}`;
+  const r = await fetch(url);
+  if(!r.ok) throw new Error('HTTP '+r.status);
+  return r.json();
+}
+
+async function fetchPlayerStats(){
+  // Many legs include players from different games. Query by players-only for the date.
+  const players = LEGS.filter(l=>l.type!=='under').map(l=>l.key);
+  const uniq = [...new Set(players)];
+  const q = `player=${uniq.join(',')}`; // no game filter → returns each player's log for that date
+  const feed = await msf(`v2.1/pull/nfl/2025-regular/date/${DATE}/player_gamelogs.json`, q);
+  const logs = feed?.playerGamelogs || feed?.gamelogs || [];
+  const map = {};
+  logs.forEach(l=>{
+    const slug = `${(l.player.firstName||'').toLowerCase()}-${(l.player.lastName||'').toLowerCase()}`;
+    map[slug] = l.stats || {};
+  });
+  return map;
+}
+
+async function fetchGameTotal(){
+  const feed = await msf(`v2.1/pull/nfl/2025-regular/date/${DATE}/games.json`);
+  const arr = feed?.games || [];
+  const g = arr.find(x=>{
+    const a = x.schedule?.awayTeam?.abbreviation;
+    const h = x.schedule?.homeTeam?.abbreviation;
+    return `${DATE}-${a}-${h}` === GAME_KEY;
+  });
+  if(!g) return 0;
+  const sc = g.score || {};
+  return Number(sc.awayScoreTotal||0) + Number(sc.homeScoreTotal||0);
+}
+
+function pick(stats, group, key, alts=[]){
+  const g = stats?.[group] || {};
+  for(const k of [key, ...alts]){
+    if(g[k]!=null) return Number(g[k])||0;
+  }
+  return 0;
+}
+function anyTD(stats){
+  return (
+    pick(stats,'rushing','rushTD',['td']) +
+    pick(stats,'receiving','recTD',['td']) +
+    pick(stats,'kickoffReturns','krTD',['td']) +
+    pick(stats,'puntReturns','prTD',['td']) +
+    pick(stats,'fumbles','offFumTD',['fumTD','td'])
+  );
+}
+
+function legNow(leg, stats, gameTotal){
+  if(leg.type==='under') return {now:gameTotal, target:leg.line, pct:Math.max(0,Math.min(100, Math.round(100*Math.min(gameTotal,leg.line)/leg.line))), hit: gameTotal<=leg.line};
+  if(!stats) return {now:0, target:leg.target||1, pct:0, hit:false};
+  let now=0;
+  switch(leg.type){
+    case 'passYds': now = pick(stats,'passing','passYards',['passGrossYards','passNetYards','yards']); break;
+    case 'passTD' : now = pick(stats,'passing','passTD',['td']); break;
+    case 'recYds' : now = pick(stats,'receiving','recYards',['yards']); break;
+    case 'recs'   : now = pick(stats,'receiving','receptions',['recs']); break;
+    case 'tdAny'  : now = anyTD(stats); break;
+  }
+  const target = leg.target||1;
+  const pct = Math.max(0, Math.min(100, Math.round(100 * Math.min(now,target) / target)));
+  return {now, target, pct, hit: now>=target};
+}
+
+function updateUI(statMap, gameTotal){
+  let hits=0;
+  LEGS.forEach((leg,i)=>{
+    const m = leg.type==='under' ? null : statMap[leg.key];
+    const {now, pct, hit} = legNow(leg, m, gameTotal);
+    if(hit) hits++;
+    document.getElementById(`A-${i}-bar`).style.width = pct+'%';
+    const status = document.getElementById(`A-${i}-status`);
+    status.textContent = (leg.type==='under' ? (now<=leg.line?'Under':'Over') : (hit?'✓':'…')) + ` · ${pct}%`;
+    status.className = 'tag ' + (hit ? 'ok' : (pct>0 ? 'warn' : ''));
+    document.getElementById(`A-${i}-now`).textContent = (leg.type==='under' ? now.toFixed(0) : now);
+  });
+  const fill = Math.round(100*hits/LEGS.length);
+  document.getElementById('A-fill').style.width = fill+'%';
+  document.getElementById('A-hit').textContent = hits;
+}
+
+async function tick(){
+  try{
+    const [stats, total] = await Promise.all([fetchPlayerStats(), fetchGameTotal()]);
+    updateUI(stats, total);
+  }catch(e){
+    // swallow
+  }
+}
+
+tick();
+setInterval(tick, 20000);
+</script>
+</body>
+</html>
