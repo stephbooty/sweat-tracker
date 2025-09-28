@@ -1,0 +1,189 @@
+
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Mahomes — Live Box Score</title>
+<style>
+  :root{
+    --bg:#0b1020; --card:#11162a; --ink:#f8fafc; --muted:#94a3b8; --line:#1f2a44;
+    --good:#10b981; --warn:#f59e0b; --bad:#ef4444;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:#0b1020;color:var(--ink);font-family:Inter,system-ui,Arial}
+  .wrap{max-width:720px;margin:28px auto;padding:0 16px}
+  .panel{background:#11162a;border:1px solid #1f2a44;border-radius:14px;padding:16px;margin:12px 0;box-shadow:0 8px 30px rgba(0,0,0,.25)}
+  h1{margin:0 0 8px 0;font-size:26px}
+  .muted{color:var(--muted);font-size:13px}
+  .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .stat{background:#0f152a;border:1px solid #202b4a;border-radius:10px;padding:10px}
+  .stat h3{margin:0 0 6px 0;font-size:13px;font-weight:600;color:#cbd5e1}
+  .val{font-size:22px;font-weight:800;letter-spacing:.4px}
+  .bar{height:12px;background:#1a2340;border:1px solid #2b375c;border-radius:8px;overflow:hidden}
+  .fill{height:100%;background:linear-gradient(90deg,#10b981,#38bdf8);width:0%}
+  .pct{font-variant-numeric:tabular-nums}
+  .ok{color:var(--good)} .warn{color:var(--warn)} .bad{color:var(--bad)}
+  code{background:#0f152a;border:1px solid #202b4a;padding:2px 6px;border-radius:6px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="panel">
+    <h1>Patrick Mahomes — Live</h1>
+    <div class="muted">Source: v2.1 <code>games/20250928-BAL-KC/boxscore.json</code> → fallback to <code>date/20250928/player_gamelogs.json?game=20250928-BAL-KC&player=patrick-mahomes</code>. Auto-refresh every 20s.</div>
+  </div>
+
+  <div class="panel">
+    <div class="row" style="justify-content:space-between">
+      <div><strong>Status:</strong> <span id="status">loading…</span></div>
+      <div class="muted">Kickoff: Sep 28, 2025</div>
+    </div>
+    <div class="grid" style="margin-top:10px">
+      <div class="stat"><h3>Pass (C/Att)</h3><div class="val"><span id="cmp">0</span>/<span id="att">0</span></div></div>
+      <div class="stat"><h3>Pass Yards</h3><div class="val"><span id="pyd">0</span></div><div class="bar"><div class="fill" id="bar-yards"></div></div><div class="muted"><span class="pct" id="pct-yards">0%</span> of 200</div></div>
+      <div class="stat"><h3>TD / INT</h3><div class="val"><span id="ptd">0</span> / <span id="int">0</span></div><div class="bar"><div class="fill" id="bar-td"></div></div><div class="muted"><span class="pct" id="pct-td">0%</span> of 1</div></div>
+      <div class="stat"><h3>Longest</h3><div class="val"><span id="lng">0</span> yds</div></div>
+      <div class="stat"><h3>Sacks</h3><div class="val"><span id="sacks">0</span></div></div>
+      <div class="stat"><h3>Rush (Att/Yds)</h3><div class="val"><span id="ratt">0</span>/<span id="ryds">0</span></div></div>
+      <div class="stat"><h3>QB Rating</h3><div class="val"><span id="qbr">0.0</span></div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const TARGET_YDS = 200;
+const TARGET_TD  = 1;
+
+// Proxy helper (uses your Vercel /api/msf)
+async function msf(path, q=''){
+  const url = `/api/msf?path=${encodeURIComponent(path)}${q ? `&q=${encodeURIComponent(q)}` : ''}`;
+  const r = await fetch(url);
+  if (!r.ok) throw new Error('HTTP '+r.status);
+  return r.json();
+}
+
+// Extractor that tolerates both boxscore shape (teams[] -> players[]) and gamelogs shape
+function extractMahomesFromBox(box){
+  // Try common shapes
+  const teams = box?.awayTeam?.players || box?.homeTeam?.players || box?.teams || [];
+  // Flatten any nested players arrays
+  const flat = [];
+  const eat = (arr)=>{
+    arr?.forEach(t=>{
+      const players = t?.players || t?.awayPlayers || t?.homePlayers || t?.playerEntries || t?.playerStats || [];
+      (players||[]).forEach(p=> flat.push(p));
+    });
+  };
+  if (Array.isArray(teams)) eat(teams);
+  // Some feeds have direct awayTeam/homeTeam objects with .players
+  if (box?.awayTeam?.players) flat.push(...box.awayTeam.players);
+  if (box?.homeTeam?.players) flat.push(...box.homeTeam.players);
+  // Normalize records to { player, stats }
+  const norm = flat.map(p=>{
+    const player = p.player || p?.playerEntry?.player || p;
+    const stats  = p.playerStats || p.stats || [];
+    return { player, stats };
+  });
+  // Find Patrick Mahomes
+  const match = norm.find(x => {
+    const fn = (x.player?.firstName||'').toLowerCase();
+    const ln = (x.player?.lastName||'').toLowerCase();
+    return fn==='patrick' && ln==='mahomes';
+  });
+  if(!match) return null;
+  // Some feeds give an array of snapshots; take the last
+  const latest = Array.isArray(match.stats) ? match.stats[match.stats.length-1] : (match.stats || {});
+  return latest;
+}
+
+function extractMahomesFromGamelog(gl){
+  const logs = gl?.playerGamelogs || gl?.gamelogs || [];
+  const m = logs.find(l => (l?.player?.firstName||'').toLowerCase()==='patrick' && (l?.player?.lastName||'').toLowerCase()==='mahomes');
+  return m?.stats || null;
+}
+
+function readNumber(obj, path, alts=[]){
+  // path like ['passing','passYards']
+  const [g,k] = path;
+  const group = obj?.[g] || {};
+  const keys = [k, ...alts];
+  for(const key of keys){
+    const v = group?.[key];
+    if (v != null) return Number(v) || 0;
+  }
+  return 0;
+}
+
+function updateUI(stats){
+  const att = readNumber(stats, ['passing','passAttempts'], ['attempts']);
+  const cmp = readNumber(stats, ['passing','passCompletions'], ['completions']);
+  const pyd = readNumber(stats, ['passing','passYards'], ['passGrossYards','passNetYards','yards']);
+  const ptd = readNumber(stats, ['passing','passTD'], ['td','passingTD']);
+  const pint= readNumber(stats, ['passing','passInt'], ['interceptions']);
+  const lng = readNumber(stats, ['passing','passLng'], ['long']);
+  const sacks = readNumber(stats, ['passing','passSacks'], ['sacks']);
+  const ratt = readNumber(stats, ['rushing','rushAttempts'], ['attempts']);
+  const ryds = readNumber(stats, ['rushing','rushYards'], ['yards']);
+  const qbr = readNumber(stats, ['passing','qbRating'], ['rating']);
+
+  document.getElementById('att').textContent = att;
+  document.getElementById('cmp').textContent = cmp;
+  document.getElementById('pyd').textContent = pyd;
+  document.getElementById('ptd').textContent = ptd;
+  document.getElementById('int').textContent = pint;
+  document.getElementById('lng').textContent = lng;
+  document.getElementById('sacks').textContent = sacks;
+  document.getElementById('ratt').textContent = ratt;
+  document.getElementById('ryds').textContent = ryds;
+  document.getElementById('qbr').textContent = (Math.round(qbr*10)/10).toFixed(1);
+
+  const pctY = Math.max(0, Math.min(100, Math.round(100 * pyd / TARGET_YDS)));
+  document.getElementById('bar-yards').style.width = pctY+'%';
+  document.getElementById('pct-yards').textContent = pctY+'%';
+
+  const pctT = Math.max(0, Math.min(100, Math.round(100 * Math.min(ptd, TARGET_TD) / TARGET_TD)));
+  document.getElementById('bar-td').style.width = pctT+'%';
+  document.getElementById('pct-td').textContent = pctT+'%';
+}
+
+async function tick(){
+  const status = document.getElementById('status');
+  try{
+    // Try per-game BOX first
+    const box = await msf('v2.1/pull/nfl/2025-regular/games/20250928-BAL-KC/boxscore.json');
+    const latest = extractMahomesFromBox(box);
+    if(latest){
+      updateUI(latest);
+      status.textContent = 'boxscore ✓';
+      status.className = 'ok';
+      return;
+    }
+    throw new Error('Mahomes not found in boxscore');
+  }catch(e){
+    try{
+      // Fallback: player_gamelogs by game + player
+      const gl = await msf('v2.1/pull/nfl/2025-regular/date/20250928/player_gamelogs.json', 'game=20250928-BAL-KC&player=patrick-mahomes');
+      const stats = extractMahomesFromGamelog(gl);
+      if(stats){
+        updateUI(stats);
+        const statusEl = document.getElementById('status');
+        statusEl.textContent = 'player_gamelogs ✓';
+        statusEl.className = 'ok';
+        return;
+      }
+      throw new Error('Mahomes not found in gamelogs');
+    }catch(e2){
+      const statusEl = document.getElementById('status');
+      statusEl.textContent = 'no data yet… (waiting)';
+      statusEl.className = '';
+    }
+  }
+}
+
+tick();
+setInterval(tick, 20000);
+</script>
+</body>
+</html>
