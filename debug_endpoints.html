@@ -1,0 +1,54 @@
+
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>MSF Debug — Endpoints & Keys</title>
+<style>
+  body{font-family:Inter,system-ui,Arial;background:#0b1020;color:#e5e7eb;margin:0}
+  .wrap{max-width:1000px;margin:24px auto;padding:0 16px}
+  .card{background:#0f152a;border:1px solid #202b4a;border-radius:12px;padding:12px;margin:10px 0}
+  a{color:#8ab4ff;text-decoration:none}
+  a:hover{text-decoration:underline}
+  .muted{color:#94a3b8}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h2>MSF Debug — Sunday (2025-09-28)</h2>
+  <p class="muted">Click links to see what your proxy returns for each game.</p>
+  <div id="list"></div>
+</div>
+<script>
+async function msf(path){
+  const r = await fetch('/api/msf?path='+encodeURIComponent(path));
+  if(!r.ok) throw new Error('HTTP '+r.status);
+  return r.json();
+}
+function link(url){ return `<a target="_blank" href="${url}">${url}</a>`; }
+(async function(){
+  try{
+    const week = await msf('v2.0/pull/nfl/2025-regular/week/4/games.json');
+    const games = (week.games||[]).filter(g=> (g.schedule?.startTime||'').slice(0,10)==='2025-09-28');
+    document.getElementById('list').innerHTML = games.map(g=>{
+      const id = g.schedule.id;
+      const date = g.schedule.startTime.slice(0,10).replaceAll('-','');
+      const away = g.awayTeam.abbreviation;
+      const home = g.homeTeam.abbreviation;
+      const key = `${date}-${away}-${home}`;
+      const box = `/api/msf?path=${encodeURIComponent('v2.1/pull/nfl/2025-regular/games/'+id+'/boxscore.json')}`;
+      const tg  = `/api/msf?path=${encodeURIComponent('v2.1/pull/nfl/2025-regular/date/'+date+'/team_gamelogs.json')}&q=${encodeURIComponent('game='+key)}`;
+      return `<div class="card">
+        <div><strong>${away} @ ${home}</strong> — id <code>${id}</code> — key <code>${key}</code></div>
+        <div>Boxscore: ${link(box)}</div>
+        <div>Team gamelogs: ${link(tg)}</div>
+      </div>`;
+    }).join('');
+  }catch(e){
+    document.getElementById('list').textContent = 'Error loading week list: '+e.message;
+  }
+})();
+</script>
+</body>
+</html>
