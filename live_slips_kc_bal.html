@@ -1,0 +1,252 @@
+
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>KC–BAL Bet Slips — Live</title>
+<style>
+  :root{
+    --bg:#0b1020; --card:#11162a; --ink:#f8fafc; --muted:#94a3b8; --line:#1f2a44;
+    --accent:#7c3aed; --accent2:#06b6d4; --good:#10b981; --warn:#f59e0b; --bad:#ef4444;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:#0b1020;color:var(--ink);font-family:Inter,system-ui,Arial}
+  .wrap{max-width:980px;margin:28px auto;padding:0 16px}
+  h1{margin:0 0 12px 0;font-size:28px}
+  .panel{background:#11162a;border:1px solid #1f2a44;border-radius:14px;padding:16px;margin:12px 0;box-shadow:0 8px 30px rgba(0,0,0,.25)}
+  .hdr{display:flex;justify-content:space-between;align-items:center}
+  .muted{color:var(--muted);font-size:13px}
+  .slip{background:#101630;border:1px solid #223055;border-radius:14px;padding:14px;margin:14px 0}
+  .slip > .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+  .slip h2{margin:0;font-size:18px}
+  .pill{font-size:12px;background:#243052;border:1px solid #2b375c;color:#c3d3ff;padding:2px 8px;border-radius:999px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .leg{background:#0f152a;border:1px solid #202b4a;border-radius:12px;padding:12px}
+  .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .leg h3{margin:0 0 4px 0;font-size:14px}
+  .tag{font-size:11px;background:#243052;border:1px solid #2b375c;padding:2px 6px;border-radius:999px;color:#e5e7eb}
+  .bar{height:12px;background:#1a2340;border:1px solid #2b375c;border-radius:8px;overflow:hidden}
+  .fill{height:100%;background:linear-gradient(90deg,#10b981,#38bdf8);width:0%}
+  .nums{display:flex;justify-content:space-between;color:#cbd5e1;font-size:12px;margin-top:4px}
+  .status{font-weight:700}
+  .ok{color:var(--good)} .warn{color:var(--warn)} .bad{color:var(--bad)}
+  .foot{display:flex;justify-content:space-between;align-items:center;margin-top:8px;color:#cdd6f4}
+  .slipbar{height:14px;background:#1a2340;border:1px solid #2b375c;border-radius:9px;overflow:hidden}
+  .slipfill{height:100%;background:linear-gradient(90deg,#10b981,#38bdf8);width:0%}
+  code{background:#0f152a;border:1px solid #202b4a;padding:2px 6px;border-radius:6px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="panel hdr">
+    <div>
+      <h1>BAL @ KC — Live Bet Tracker</h1>
+      <div class="muted">Source: v2.1 <code>date/20250928/player_gamelogs.json?game=20250928-BAL-KC&player=...</code> — refreshes every 20s.</div>
+    </div>
+    <div class="row"><div class="pill" id="status">loading…</div></div>
+  </div>
+
+  <!-- Slip containers -->
+  <div class="slip" id="slipB">
+    <div class="top">
+      <h2>Bet Slip B — 4‑Leg Anytime TD</h2>
+      <div class="pill"><span id="B-hit">0</span>/4 legs</div>
+    </div>
+    <div class="grid" id="B-legs"></div>
+    <div class="foot">
+      <div class="muted">Legs hit</div>
+      <div class="slipbar"><div class="slipfill" id="B-fill"></div></div>
+    </div>
+  </div>
+
+  <div class="slip" id="slipC">
+    <div class="top">
+      <h2>Bet Slip C — SGP (+993)</h2>
+      <div class="pill"><span id="C-hit">0</span>/5 legs (excludes FTD)</div>
+    </div>
+    <div class="grid" id="C-legs"></div>
+    <div class="foot">
+      <div class="muted">Legs hit (FTD not tracked)</div>
+      <div class="slipbar"><div class="slipfill" id="C-fill"></div></div>
+    </div>
+  </div>
+
+  <div class="slip" id="slipD">
+    <div class="top">
+      <h2>Bet Slip D — SGP (+751)</h2>
+      <div class="pill"><span id="D-hit">0</span>/8 legs</div>
+    </div>
+    <div class="grid" id="D-legs"></div>
+    <div class="foot">
+      <div class="muted">Legs hit</div>
+      <div class="slipbar"><div class="slipfill" id="D-fill"></div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const GAME_KEY = '20250928-BAL-KC';
+const PLAYER_SLUGS = [
+  'patrick-mahomes','lamar-jackson','zay-flowers','travis-kelce','derrick-henry','xavier-worthy'
+];
+
+// Map display to slug for convenience
+const P = {
+  'Patrick Mahomes':'patrick-mahomes',
+  'Lamar Jackson':'lamar-jackson',
+  'Zay Flowers':'zay-flowers',
+  'Travis Kelce':'travis-kelce',
+  'Derrick Henry':'derrick-henry',
+  'Xavier Worthy':'xavier-worthy',
+};
+
+// Leg config
+const LEGS = {
+  B: [
+    tdAny('Lamar Jackson'),
+    tdAny('Xavier Worthy'),
+    tdAny('Derrick Henry'),
+    tdAny('Travis Kelce'),
+  ],
+  C: [
+    // first TD (either) not tracked live — skip to avoid false fails
+    recYds('Zay Flowers', 50),
+    receptions('Zay Flowers', 5),
+    rushYds('Derrick Henry', 60),
+    rushYds('Lamar Jackson', 30),
+    passYds('Lamar Jackson', 175),
+  ],
+  D: [
+    passYds('Patrick Mahomes', 200),
+    passYds('Lamar Jackson', 175),
+    recYds('Zay Flowers', 30),
+    recYds('Travis Kelce', 20),
+    passTD('Patrick Mahomes', 1),
+    passTD('Lamar Jackson', 1),
+    tdAny('Derrick Henry'),
+    tdAny('Xavier Worthy'),
+  ]
+};
+
+function passYds(name, target){return {type:'passYds', name, target, key:P[name]}}
+function passTD(name, target){return {type:'passTD', name, target, key:P[name]}}
+function recYds(name, target){return {type:'recYds', name, target, key:P[name]}}
+function receptions(name, target){return {type:'recs', name, target, key:P[name]}}
+function rushYds(name, target){return {type:'rushYds', name, target, key:P[name]}}
+function tdAny(name){return {type:'tdAny', name, target:1, key:P[name]}}
+
+function legTitle(leg){
+  const tMap={passYds:'Passing Yards', passTD:'Passing TDs', recYds:'Receiving Yards', recs:'Receptions', rushYds:'Rushing Yards', tdAny:'Anytime TD'};
+  const t = tMap[leg.type]||leg.type;
+  return `${leg.name} — ${t}${leg.type!=='tdAny' ? ' ('+leg.target+'+)' : ''}`;
+}
+
+// Render leg cards
+function renderLegs(){
+  for(const k of ['B','C','D']){
+    const host = document.getElementById(k+'-legs');
+    host.innerHTML = LEGS[k].map((leg,i)=>`
+      <div class="leg" id="${k}-${i}">
+        <div class="row" style="justify-content:space-between">
+          <h3>${legTitle(leg)}</h3>
+          <span class="tag" id="${k}-${i}-status">0%</span>
+        </div>
+        <div class="bar"><div class="fill" id="${k}-${i}-bar"></div></div>
+        <div class="nums"><span id="${k}-${i}-now">0</span><span>${leg.type==='tdAny'?'of 1':'of '+leg.target}</span></div>
+      </div>
+    `).join('');
+  }
+}
+renderLegs();
+
+async function msf(path,q=''){
+  const url = `/api/msf?path=${encodeURIComponent(path)}${q?`&q=${encodeURIComponent(q)}`:''}`;
+  const r = await fetch(url);
+  if(!r.ok) throw new Error('HTTP '+r.status);
+  return r.json();
+}
+
+// Get stats for all configured players in one call
+async function fetchStats(){
+  const q = `game=${GAME_KEY}&player=${PLAYER_SLUGS.join(',')}`;
+  const feed = await msf('v2.1/pull/nfl/2025-regular/date/20250928/player_gamelogs.json', q);
+  const logs = feed?.playerGamelogs || feed?.gamelogs || [];
+  const bySlug = {};
+  logs.forEach(l=>{
+    const fn = (l.player?.firstName||'').toLowerCase();
+    const ln = (l.player?.lastName||'').toLowerCase();
+    const slug = `${fn}-${ln}`;
+    bySlug[slug] = l.stats || {};
+  });
+  return bySlug;
+}
+
+function pick(stats, group, key, alts=[]){
+  const g = stats?.[group] || {};
+  const keys = [key, ...alts];
+  for(const k of keys){
+    if(g[k]!=null) return Number(g[k])||0;
+  }
+  return 0;
+}
+
+function anyTD(stats){
+  const rec = pick(stats,'receiving','recTD',['td']);
+  const rus = pick(stats,'rushing','rushTD',['td']);
+  const kr  = pick(stats,'kickoffReturns','krTD',['td']);
+  const pr  = pick(stats,'puntReturns','prTD',['td']);
+  const fum = pick(stats,'fumbles','offFumTD',['fumTD','td']);
+  return rec+rus+kr+pr+fum;
+}
+
+function legProgress(leg, stats){
+  if(!stats) return {now:0, pct:0, hit:false};
+  let now=0;
+  switch(leg.type){
+    case 'passYds': now = pick(stats,'passing','passYards',['passGrossYards','passNetYards','yards']); break;
+    case 'passTD' : now = pick(stats,'passing','passTD',['td']); break;
+    case 'recYds' : now = pick(stats,'receiving','recYards',['yards']); break;
+    case 'recs'   : now = pick(stats,'receiving','receptions',['recs']); break;
+    case 'rushYds': now = pick(stats,'rushing','rushYards',['yards']); break;
+    case 'tdAny'  : now = anyTD(stats); break;
+  }
+  const target = leg.target||1;
+  const pct = Math.max(0, Math.min(100, Math.round(100 * Math.min(now,target)/target)));
+  const hit = now >= target;
+  return {now, pct, hit};
+}
+
+function updateUI(allStats){
+  for(const k of ['B','C','D']){
+    let hits=0;
+    LEGS[k].forEach((leg,i)=>{
+      const stats = allStats[leg.key];
+      const {now,pct,hit} = legProgress(leg, stats);
+      if(hit) hits++;
+      document.getElementById(`${k}-${i}-bar`).style.width = pct+'%';
+      document.getElementById(`${k}-${i}-status`).textContent = pct+'%';
+      document.getElementById(`${k}-${i}-status`).className = 'tag '+(hit?'ok':(pct>0?'warn':''));
+      document.getElementById(`${k}-${i}-now`).textContent = now;
+    });
+    document.getElementById(`${k}-hit`).textContent = hits;
+    const fill = Math.round(100*hits/LEGS[k].length);
+    document.getElementById(`${k}-fill`).style.width = fill+'%';
+  }
+}
+
+async function tick(){
+  try{
+    const stats = await fetchStats();
+    updateUI(stats);
+    document.getElementById('status').textContent = 'Live ✓';
+  }catch(e){
+    document.getElementById('status').textContent = 'Error — retrying';
+  }
+}
+
+tick();
+setInterval(tick, 20000);
+</script>
+</body>
+</html>
