@@ -1,0 +1,288 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>SGP — Bengals @ Broncos (Live)</title>
+<style>
+  /* ===== Neon / glass look ===== */
+  :root{
+    --bg:#070a14;
+    --panel:#0c1224cc;
+    --card:#0e1530cc;
+    --ink:#ecf3ff;
+    --muted:#99a8c4;
+    --line:#1e2a55;
+    --good:#10b981;
+    --warn:#f59e0b;
+    --bad:#ef4444;
+    --accent:#7c3aed;
+    --c2:#06b6d4;
+  }
+  *,*::before,*::after{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:radial-gradient(1200px 800px at 10% -10%, #1e3a8a44, transparent),
+                     radial-gradient(800px 600px at 100% 10%, #0ea5e955, transparent),
+                     radial-gradient(900px 700px at 40% 120%, #7c3aed33, transparent),
+                     var(--bg);
+       color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,Segoe UI,Roboto,Arial}
+  .wrap{max-width:1080px;margin:24px auto;padding:0 16px}
+  .shadow{box-shadow:0 20px 60px #0008, inset 0 1px 0 #ffffff0f}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px;margin:12px 0;backdrop-filter:blur(8px)}
+  .header{display:flex;gap:18px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+  .brand{display:flex;gap:12px;align-items:center}
+  .ball{width:38px;height:38px;border-radius:10px;background:conic-gradient(from 40deg,#22d3ee,#7c3aed,#22d3ee);filter:blur(.1px)}
+  h1{font-weight:800;letter-spacing:.3px;font-size:28px;margin:0}
+  .pill{font-size:12px;padding:4px 10px;border-radius:999px;border:1px solid #2a376c;background:#0c1536aa;color:#cfe0ff}
+  .money{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+  .money .num{font-weight:800}
+  .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:14px}
+  .score{grid-column:span 12;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px}
+  @media (min-width:900px){ .score{grid-column:span 6} }
+  .score .row{display:flex;align-items:center;justify-content:space-between}
+  .team{display:flex;align-items:center;gap:10px}
+  .badge{width:38px;height:38px;border-radius:10px;display:grid;place-items:center;font-weight:900;color:#fff}
+  .badge.cin{background:#fb4f14}
+  .badge.den{background:#002244}
+  .sbig{font-size:30px;font-weight:900}
+  .live{display:flex;gap:8px;align-items:center}
+  .dot{width:8px;height:8px;border-radius:50%;background:#22c55e;box-shadow:0 0 12px #22c55e}
+  /* Legs */
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px}
+  .leg{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center}
+  .title{font-weight:700}
+  .subtitle{font-size:12px;color:var(--muted)}
+  .bar{height:12px;background:#121a3d;border:1px solid #2a376c;border-radius:8px;overflow:hidden}
+  .fill{height:100%;background:linear-gradient(90deg,var(--good),#38bdf8);width:0%}
+  .nums{display:flex;justify-content:space-between;font-size:12px;color:#cddbff}
+  .chip{font-size:12px;padding:4px 8px;border-radius:999px;border:1px solid #2a376c}
+  .hit{background:#083b2b;color:#b7f7de;border-color:#146b56}
+  .sweat{background:#2b1b06;color:#f7e4b7;border-color:#7c5a14}
+  .miss{background:#3b0a0a;color:#ffd1d1;border-color:#7c1414}
+  .legGrid{display:grid;grid-template-columns:repeat(12,1fr);gap:14px}
+  .span6{grid-column:span 12}@media(min-width:900px){.span6{grid-column:span 6}}
+  .span4{grid-column:span 12}@media(min-width:1200px){.span4{grid-column:span 4}}
+  .span12{grid-column:span 12}
+  .foot{display:flex;justify-content:space-between;align-items:center;margin-top:8px}
+  .slipbar{height:16px;background:#121a3d;border:1px solid #2a376c;border-radius:10px;overflow:hidden;min-width:180px}
+  .slipfill{height:100%;background:linear-gradient(90deg,#22c55e,#06b6d4);width:0%}
+  code{background:#0b1230;border:1px solid #223055;padding:2px 6px;border-radius:6px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="panel shadow header">
+    <div class="brand">
+      <div class="ball"></div>
+      <div>
+        <h1>Same Game Parlay — Bengals @ Broncos</h1>
+        <div class="pill">Mon, Sep 29 • 5:15 PM • Live every 20s</div>
+      </div>
+    </div>
+    <div class="money">
+      <div class="pill">+4000</div>
+      <div class="pill">50% Boost</div>
+      <div class="pill">Wager <span class="num">$40</span></div>
+      <div class="pill">To Return <span class="num">$2,440</span></div>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div class="score shadow">
+      <div class="row">
+        <div class="team"><div class="badge cin">CIN</div><div><div class="subtitle">Away</div><div class="title">Cincinnati Bengals</div></div></div>
+        <div class="sbig" id="cinScore">0</div>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <div class="team"><div class="badge den">DEN</div><div><div class="subtitle">Home</div><div class="title">Denver Broncos</div></div></div>
+        <div class="sbig" id="denScore">0</div>
+      </div>
+      <div class="foot">
+        <div class="live"><div class="dot"></div><span id="gameStatus">Live</span></div>
+        <div class="pill" id="spreadChip">CIN +7.5 — <b id="spreadState">Not covering</b></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel shadow">
+    <div class="legGrid" id="legsHost"></div>
+    <div class="foot" style="margin-top:14px">
+      <div class="subtitle">Legs hit</div>
+      <div class="slipbar"><div class="slipfill" id="slipFill"></div></div>
+      <div class="pill"><span id="hitCount">0</span>/7</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== Config =====
+// If your book listed a different date, tweak DATE & GAME_KEY:
+const DATE = '20250929';
+const GAME_KEY = '20250929-CIN-DEN';
+const SPREAD = 7.5; // CIN +7.5
+
+const legs = [
+  // player, group, statKey(s), target, label
+  { id:'nixPass',   player:['Bo','Nix'],        metric:'Passing Yards',      group:'passing',   key:['passYards','passGrossYards','passNetYards','yards'], target:221.5 },
+  { id:'browningInt', player:['Jake','Browning'], metric:'Interceptions',      group:'passing',   key:['passInt','interceptions'], target:1, isCount:true },
+  { id:'dobbinsRush',  player:['J.K.','Dobbins'],  metric:'Rushing Yards',      group:'rushing',   key:['rushYards','yards'], target:66.5 },
+  { id:'chaseRecv',    player:["Ja'Marr",'Chase'], metric:'Receiving Yards',    group:'receiving', key:['recYards','yards'], target:65.5 },
+  { id:'suttonLong',   player:['Courtland','Sutton'], metric:'Longest Reception', group:'receiving', key:['recLng','long'], target:22.5 },
+  { id:'suttonRecv',   player:['Courtland','Sutton'], metric:'Receiving Yards',  group:'receiving', key:['recYards','yards'], target:65.5 },
+  // spread card is separate
+];
+
+// ===== Render leg cards =====
+function legCard(leg){
+  const playerName = leg.player.join(' ');
+  const targetText = (leg.isCount ? 'of ' + (leg.target|0) : 'of ' + leg.target);
+  return `<div class="card span6" id="${leg.id}">
+    <div class="leg">
+      <div>
+        <div class="title">${playerName} — ${leg.metric}</div>
+        <div class="subtitle" id="${leg.id}-sub">0 ${targetText}</div>
+      </div>
+      <div class="chip" id="${leg.id}-chip">Sweating…</div>
+    </div>
+    <div class="bar" style="margin-top:10px"><div class="fill" id="${leg.id}-bar"></div></div>
+    <div class="nums"><span id="${leg.id}-now">0</span><span>${targetText}</span></div>
+  </div>`;
+}
+
+function renderLegs(){
+  const host = document.getElementById('legsHost');
+  host.innerHTML = [
+    legCard(legs[0]),  // Nix pass yds
+    legCard(legs[1]),  // Browning INTs
+    legCard(legs[2]),  // Dobbins rush yds
+    legCard(legs[3]),  // Chase rec yds
+    legCard(legs[4]),  // Sutton long
+    legCard(legs[5]),  // Sutton rec yds
+    // spread card
+    `<div class="card span12" id="spread">
+      <div class="leg">
+        <div>
+          <div class="title">Spread — CIN +${SPREAD}</div>
+          <div class="subtitle" id="spreadSub">Status</div>
+        </div>
+        <div class="chip" id="spreadChip2">Sweating…</div>
+      </div>
+      <div class="bar" style="margin-top:10px"><div class="fill" id="spreadBar"></div></div>
+      <div class="nums"><span id="spreadNow">0</span><span>needs ≥ 0 after +${SPREAD}</span></div>
+    </div>`
+  ].join('');
+}
+renderLegs();
+
+// ===== API helper (uses your Vercel proxy) =====
+async function msf(path, q=''){
+  const url = `/api/msf?path=${encodeURIComponent(path)}${q?`&q=${encodeURIComponent(q)}`:''}`;
+  const r = await fetch(url);
+  if(!r.ok) throw new Error('HTTP '+r.status);
+  return r.json();
+}
+
+// ===== Data helpers =====
+const norm = s => (s||'').toLowerCase().replace(/[^a-z]/g,'');
+function matchPlayer(entry, [first,last]){
+  const fn = norm(entry?.player?.firstName);
+  const ln = norm(entry?.player?.lastName);
+  return fn===norm(first) && ln===norm(last);
+}
+function pick(stats, group, keys){
+  const g = stats?.[group] || {};
+  for(const k of keys){
+    if(g[k]!=null) return Number(g[k])||0;
+  }
+  return 0;
+}
+
+// ===== Fetchers =====
+async function fetchPlayerGamelogs(){
+  // Pull the game’s logs and filter locally (good for names like "J.K." / "Ja'Marr").
+  const feed = await msf(`v2.1/pull/nfl/2025-regular/date/${DATE}/player_gamelogs.json`,`game=${GAME_KEY}`);
+  return feed?.playerGamelogs || feed?.gamelogs || [];
+}
+async function fetchGameScore(){
+  const feed = await msf(`v2.1/pull/nfl/2025-regular/date/${DATE}/games.json`);
+  const arr = feed?.games || [];
+  const g = arr.find(x=>{
+    const a = x.schedule?.awayTeam?.abbreviation;
+    const h = x.schedule?.homeTeam?.abbreviation;
+    return `${DATE}-${a}-${h}`===GAME_KEY;
+  });
+  if(!g) return {away:0,home:0,status:'Scheduled'};
+  const sc = g.score||{};
+  const away = Number(sc.awayScoreTotal||0);
+  const home = Number(sc.homeScoreTotal||0);
+  const status = g.schedule?.playedStatus?.replaceAll('_',' ') || 'Scheduled';
+  return {away,home,status};
+}
+
+// ===== Update UI =====
+function pct(now,target){ if(target<=0) return now>0?100:0; return Math.max(0,Math.min(100,Math.round(100*Math.min(now,target)/target))); }
+let hitCount=0;
+function setChip(el, hit, valueText){
+  el.textContent = hit ? 'Hit' : 'Sweating…';
+  el.className = 'chip ' + (hit ? 'hit' : 'sweat');
+  if(valueText) el.textContent = valueText;
+}
+function updateLeg(leg, now){
+  const target = leg.target;
+  const p = pct(now,target);
+  const hit = now >= target;
+  document.getElementById(`${leg.id}-bar`).style.width = p+'%';
+  document.getElementById(`${leg.id}-now`).textContent = (leg.isCount?Math.floor(now):Math.round(now));
+  document.getElementById(`${leg.id}-sub`).textContent = hit ? 'Locked' : 'In progress';
+  setChip(document.getElementById(`${leg.id}-chip`), hit);
+  if(hit) hitCount++;
+}
+
+function updateSpread(away,home){
+  // CIN is the away team in this key
+  const margin = away - home; // CIN – DEN
+  const effective = margin + SPREAD;
+  const covering = effective >= 0;
+  const p = Math.max(0, Math.min(100, Math.round(100 * Math.min(effective+SPREAD, SPREAD*2) / (SPREAD*2))));
+  document.getElementById('spreadBar').style.width = (covering?100:Math.max(0,p))+'%';
+  document.getElementById('spreadNow').textContent = (effective>=0?'+':'') + effective.toFixed(1);
+  document.getElementById('spreadSub').textContent = covering ? 'Covering right now' : 'Not covering (needs more)';
+  const chip = document.getElementById('spreadChip2');
+  chip.textContent = covering ? 'Covering' : 'Sweating…';
+  chip.className = 'chip ' + (covering ? 'hit' : 'sweat');
+  // Top chip
+  document.getElementById('spreadState').textContent = covering ? 'Covering' : 'Not covering';
+}
+
+// ===== Main poll =====
+async function tick(){
+  try{
+    hitCount = 0;
+
+    // Scores
+    const {away,home,status} = await fetchGameScore();
+    document.getElementById('cinScore').textContent = away;
+    document.getElementById('denScore').textContent = home;
+    document.getElementById('gameStatus').textContent = status;
+    updateSpread(away,home);
+
+    // Players
+    const logs = await fetchPlayerGamelogs();
+    for(const leg of legs){
+      const entry = logs.find(gl => matchPlayer(gl, leg.player));
+      const val = entry ? pick(entry.stats, leg.group, leg.key) : 0;
+      updateLeg(leg, val);
+    }
+
+    // Slip meter
+    document.getElementById('hitCount').textContent = hitCount;
+    document.getElementById('slipFill').style.width = Math.round(100*hitCount/7)+'%';
+  }catch(e){
+    console.error(e);
+  }
+}
+tick();
+setInterval(tick, 20000);
+</script>
+</body>
+</html>
